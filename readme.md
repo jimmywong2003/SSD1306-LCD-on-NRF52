@@ -1,9 +1,5 @@
-# Example code to work with SSD1306 Display on nRF52 DK Board
-
-This example is intended to be used together with the [nRF5 SDK]
-
 nrf52 LCD display with SSD1306 through TWI interface
-====================================================
+======================================================
 
 Description
 -----------
