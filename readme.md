@@ -1,7 +1,6 @@
-nrf52 LCD display with SSD1306 through TWI interface
-======================================================
+# nrf52 LCD display with SSD1306 through TWI interface
 
-Description
+## Description
 -----------
 There are two examples to run on SSD1306 (128x32 / 128x64) resolution with nRF52840 DK.
 
@@ -9,7 +8,23 @@ There are two examples to run on SSD1306 (128x32 / 128x64) resolution with nRF52
 
 2) Port on the SSD1306 driver (refer to https://github.com/monpetit/nrf52-spi-i2c-master-ssd1306)
 
-Requirements
+
+## Configuration of the display resolution
+
+Define in SSD1306.h
+
+```c
+#define SSD1306_128_64
+//#define SSD1306_128_32
+//#define SSD1306_96_16
+```
+![SSD1306 128x32](/images/SSD1306_128_32_NRF52840_DK_board.png)
+Format: ![Alt Text](url)
+
+![SSD1306 128x64](/images/SSD1306_128_64_NRF52840_DK_board.png)
+Format: ![Alt Text](url)
+
+# Requirements
 ------------
 - nRF5 SDK version 15.2.0
 - nRF52840 DK 
