@@ -126,7 +126,7 @@
     </folder>
     <folder Name="module">
       <file file_name="../../../../module/ssd1306_driver_adafruit/glcdfont.c" />
-      <file file_name="../../../../module/ssd1306_driver_adafruit/ssd1306.c" />
+      <file file_name="../../../../module/ssd1306_driver_adafruit/ssd1306_nrfx_twim.c" />
       <file file_name="../../../../module/ssd1306_driver_adafruit/Adafruit_GFX.c" />
     </folder>
     <configuration

@@ -18,11 +18,26 @@
 
 #include "SSD1306.h"
 
-// TWI handle
-extern nrf_drv_twi_t m_twi_master;
+#include "nrf_log.h"
+#include "nrf_log_ctrl.h"
+#include "nrf_log_default_backends.h"
+
+// // TWI handle
+// extern nrf_drv_twi_t m_twi_master;
 
 static int WIDTH = SSD1306_LCDWIDTH;
 static int HEIGHT = SSD1306_LCDHEIGHT;
+
+
+#ifdef NRFX_TWIM_SSD1306
+#define TWI_INSTANCE_ID             0
+static const nrfx_twim_t m_twim_ssd1306 = NRFX_TWIM_INSTANCE(TWI_INSTANCE_ID);  /**< SPI instance. */
+#else
+const nrf_drv_twi_t m_twi_master = NRF_DRV_TWI_INSTANCE(0);
+#endif
+
+/* Indicates if operation on TWI has ended. */
+static volatile bool m_xfer_done = false;
 
 static int8_t _i2caddr, _vccstate;
 /*
@@ -205,8 +220,6 @@ static uint8_t buffer[SSD1306_LCDHEIGHT * SSD1306_LCDWIDTH / 8] =
 
 #endif
 
-
-
 #define ssd1306_swap(a, b) { int16_t t = a; a = b; b = t; }
 
 static int width() {
@@ -217,6 +230,159 @@ static int height() {
 }
 static int getRotation() {
         return 0;
+}
+
+#ifdef NRFX_TWIM_SSD1306
+static void twim_ssd1306_handler(nrfx_twim_evt_t const * p_event, void * p_context)
+{
+        switch (p_event->type)
+        {
+        case NRFX_TWIM_XFER_TX:              ///< TX transfer.
+                NRF_LOG_DEBUG("TWIM TX Done");
+                                m_xfer_done = true;
+                break;
+        case NRFX_TWIM_XFER_RX:           ///< RX transfer.
+                NRF_LOG_DEBUG("TWIM RX Done");
+                                m_xfer_done = true;
+                break;
+        case NRFX_TWIM_XFER_TXRX:                           ///< TX transfer followed by RX transfer with repeated start.
+                        m_xfer_done = true;
+                break;
+        case NRFX_TWIM_XFER_TXTX:           ///< TX transfer followed by TX transfer with repeated start.
+                NRF_LOG_DEBUG("TWIM TX TX Done");
+                                m_xfer_done = true;
+                break;
+        }
+}
+
+ret_code_t twim_master_init(uint32_t scl, uint32_t sda)
+{
+        ret_code_t err_code = NRF_SUCCESS;
+        nrfx_twim_config_t const config = {
+                .scl                = scl,
+                .sda                = sda,
+                .frequency          = NRF_TWI_FREQ_400K,
+                .interrupt_priority = APP_IRQ_PRIORITY_LOWEST,
+                .hold_bus_uninit     = true
+        };
+
+        do {
+                err_code = nrfx_twim_init(&m_twim_ssd1306, &config, twim_ssd1306_handler, NULL);
+                if (NRF_SUCCESS != err_code) {
+                        break;
+                }
+                // APP_ERROR_CHECK(err_code);
+                nrfx_twim_enable(&m_twim_ssd1306);
+        } while (0);
+
+        NRF_LOG_INFO("detected_device");
+
+        return err_code;
+}
+
+#endif
+
+
+// const nrf_drv_twi_t m_twi_master = NRF_DRV_TWI_INSTANCE(0);
+//
+// /**
+//  * @brief TWI initialization.
+//  */
+// void twi_init (void)
+// {
+//         ret_code_t err_code;
+//
+//         const nrf_drv_twi_config_t twi_sensors_config = {
+//                 .scl                = SSD1306_CONFIG_SCL_PIN,
+//                 .sda                = SSD1306_CONFIG_SDA_PIN,
+//                 .frequency          = NRF_TWI_FREQ_400K,
+//                 .interrupt_priority = APP_IRQ_PRIORITY_LOWEST
+//         };
+//
+//         //err_code = nrf_drv_twi_init(&m_twi_lis2dh12, &twi_lis2dh12_config, twi_handler, NULL);
+//         err_code = nrf_drv_twi_init(&m_twi_master, &twi_sensors_config, NULL, NULL);    // twi in blocking mode.
+//         APP_ERROR_CHECK(err_code);
+//
+//         nrf_drv_twi_enable(&m_twi_master);
+// }
+
+void SSD1306_command(uint8_t c)
+{
+  #ifdef NRFX_TWIM_SSD1306
+        ret_code_t err_code;
+        uint8_t dta_send[] = {0x00, c};
+        nrfx_twim_xfer_desc_t xfer = NRFX_TWIM_XFER_DESC_TX(_i2caddr, dta_send, 2);
+        
+        m_xfer_done = false;
+        err_code = nrfx_twim_xfer(&m_twim_ssd1306, &xfer, 0);
+        APP_ERROR_CHECK(err_code);
+
+        while (m_xfer_done == false);
+
+#else
+        ret_code_t ret;
+        uint8_t data[] = {0x00, c};
+        ret = nrf_drv_twi_tx(&m_twi_master, _i2caddr, data, 2, false);
+        APP_ERROR_CHECK(ret);
+#endif
+}
+
+void SSD1306_display(void)
+{
+        SSD1306_command(SSD1306_COLUMNADDR);
+        SSD1306_command(0); // Column start address (0 = reset)
+        SSD1306_command(SSD1306_LCDWIDTH-1); // Column end address (127 = reset)
+
+        SSD1306_command(SSD1306_PAGEADDR);
+        SSD1306_command(0); // Page start address (0 = reset)
+  #if SSD1306_LCDHEIGHT == 64
+        SSD1306_command(7); // Page end address
+  #endif
+  #if SSD1306_LCDHEIGHT == 32
+        SSD1306_command(3); // Page end address
+  #endif
+  #if SSD1306_LCDHEIGHT == 16
+        SSD1306_command(1); // Page end address
+  #endif
+
+
+        // save I2C bitrate
+#ifdef TWBR
+        uint8_t twbrbackup = TWBR;
+        TWBR = 12; // upgrade to 400KHz!
+#endif
+
+
+        // I2C
+        for (uint16_t i=0; i<(SSD1306_LCDWIDTH*SSD1306_LCDHEIGHT/8); i++) {
+                uint8_t tmpBuf[17];
+                // SSD1306_SETSTARTLINE
+                tmpBuf[0] = 0x40;
+                // data
+                for (uint8_t j = 0; j < 16; j++) {
+                        tmpBuf[j+1] = buffer[i];
+                        i++;
+                }
+                i--;
+#ifdef NRFX_TWIM_SSD1306
+                ret_code_t err_code;
+                nrfx_twim_xfer_desc_t xfer = NRFX_TWIM_XFER_DESC_TX(_i2caddr, tmpBuf, sizeof(tmpBuf));
+                m_xfer_done = false;
+                err_code = nrfx_twim_xfer(&m_twim_ssd1306, &xfer, 0);
+                APP_ERROR_CHECK(err_code);
+
+                while (m_xfer_done == false);
+#else
+                ret_code_t ret;
+                ret = nrf_drv_twi_tx(&m_twi_master, _i2caddr, tmpBuf, sizeof(tmpBuf), false);
+                APP_ERROR_CHECK(ret);
+#endif
+        }
+
+#ifdef TWBR
+        TWBR = twbrbackup;
+#endif
+
 }
 
 
@@ -332,13 +498,6 @@ void SSD1306_invertDisplay(uint8_t i) {
         }
 }
 
-void SSD1306_command(uint8_t c)
-{
-        ret_code_t ret;
-        uint8_t data[] = {0x00, c};
-        ret = nrf_drv_twi_tx(&m_twi_master, _i2caddr, data, 2, false);
-        APP_ERROR_CHECK(ret);
-}
 
 // startscrollright
 // Activate a right handed scroll for rows start through stop
@@ -431,54 +590,7 @@ void SSD1306_dim(bool dim) {
         SSD1306_command(contrast);
 }
 
-void SSD1306_display(void)
-{
-        SSD1306_command(SSD1306_COLUMNADDR);
-        SSD1306_command(0); // Column start address (0 = reset)
-        SSD1306_command(SSD1306_LCDWIDTH-1); // Column end address (127 = reset)
 
-        SSD1306_command(SSD1306_PAGEADDR);
-        SSD1306_command(0); // Page start address (0 = reset)
-  #if SSD1306_LCDHEIGHT == 64
-        SSD1306_command(7); // Page end address
-  #endif
-  #if SSD1306_LCDHEIGHT == 32
-        SSD1306_command(3); // Page end address
-  #endif
-  #if SSD1306_LCDHEIGHT == 16
-        SSD1306_command(1); // Page end address
-  #endif
-
-
-        // save I2C bitrate
-#ifdef TWBR
-        uint8_t twbrbackup = TWBR;
-        TWBR = 12; // upgrade to 400KHz!
-#endif
-
-
-        // I2C
-        for (uint16_t i=0; i<(SSD1306_LCDWIDTH*SSD1306_LCDHEIGHT/8); i++) {
-                uint8_t tmpBuf[17];
-                // SSD1306_SETSTARTLINE
-                tmpBuf[0] = 0x40;
-                // data
-                for (uint8_t j = 0; j < 16; j++) {
-                        tmpBuf[j+1] = buffer[i];
-                        i++;
-                }
-                i--;
-
-                ret_code_t ret;
-                ret = nrf_drv_twi_tx(&m_twi_master, _i2caddr, tmpBuf, sizeof(tmpBuf), false);
-                APP_ERROR_CHECK(ret);
-        }
-
-#ifdef TWBR
-        TWBR = twbrbackup;
-#endif
-
-}
 
 // clear everything
 void SSD1306_clearDisplay(void)

@@ -69,10 +69,6 @@
 #include "bsp_btn_ble.h"
 #include "nrf_pwr_mgmt.h"
 
-// #include "binary.h"
-// #include "ssd1306.h"
-// #include "nrf_drv_twi.h"
-
 #include "SSD1306.h"
 #include "Adafruit_GFX.h"
 // TWI
@@ -715,27 +711,28 @@ static void advertising_start(void)
 }
 
 
-const nrf_drv_twi_t m_twi_master = NRF_DRV_TWI_INSTANCE(0);
-
-/**
- * @brief TWI initialization.
- */
-void twi_init (void)
-{
-        ret_code_t err_code;
-
-        const nrf_drv_twi_config_t twi_sensors_config = {
-                .scl                = SSD1306_CONFIG_SCL_PIN,
-                .sda                = SSD1306_CONFIG_SDA_PIN,
-                .frequency          = NRF_TWI_FREQ_400K,
-                .interrupt_priority = APP_IRQ_PRIORITY_LOWEST
-        };
-
-        err_code = nrf_drv_twi_init(&m_twi_master, &twi_sensors_config, NULL, NULL);    // twi in blocking mode.
-        APP_ERROR_CHECK(err_code);
-
-        nrf_drv_twi_enable(&m_twi_master);
-}
+// const nrf_drv_twi_t m_twi_master = NRF_DRV_TWI_INSTANCE(0);
+//
+// /**
+//  * @brief TWI initialization.
+//  */
+// void twi_init (void)
+// {
+//         ret_code_t err_code;
+//
+//         const nrf_drv_twi_config_t twi_sensors_config = {
+//                 .scl                = SSD1306_CONFIG_SCL_PIN,
+//                 .sda                = SSD1306_CONFIG_SDA_PIN,
+//                 .frequency          = NRF_TWI_FREQ_400K,
+//                 .interrupt_priority = APP_IRQ_PRIORITY_LOWEST
+//         };
+//
+//         //err_code = nrf_drv_twi_init(&m_twi_lis2dh12, &twi_lis2dh12_config, twi_handler, NULL);
+//         err_code = nrf_drv_twi_init(&m_twi_master, &twi_sensors_config, NULL, NULL);    // twi in blocking mode.
+//         APP_ERROR_CHECK(err_code);
+//
+//         nrf_drv_twi_enable(&m_twi_master);
+// }
 
 void testdrawcircle(void) {
         Adafruit_GFX_setRotation(0);
@@ -759,6 +756,7 @@ void testdrawText(void)
         Adafruit_GFX_write('l');
         Adafruit_GFX_write('o');
         SSD1306_display();
+
 }
 
 
@@ -801,7 +799,9 @@ int main(void)
 
         nrf_delay_ms(1000);
 
-        twi_init();
+        // twi_init();
+
+        twim_master_init(26, 27);
 
         SSD1306_begin(SSD1306_SWITCHCAPVCC, SSD1306_I2C_ADDRESS, false);
         Adafruit_GFX_init(SSD1306_LCDWIDTH, SSD1306_LCDHEIGHT, SSD1306_drawPixel);

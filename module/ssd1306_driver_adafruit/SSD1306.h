@@ -22,6 +22,8 @@
 #define WHITE 1
 #define INVERSE 2
 
+#define NRFX_TWIM_SSD1306
+
 #define SSD1306_I2C_ADDRESS   0x3C  // 011110+SA0+RW - 0x3C or 0x3D // both 128_64 and 128_32 are using 0x3C
 // Address for 128x32 is 0x3C
 // Address for 128x64 is 0x3D (default) or 0x3C (if SA0 is grounded)
@@ -111,7 +113,7 @@
 #define SSD1306_VERTICAL_AND_RIGHT_HORIZONTAL_SCROLL 0x29
 #define SSD1306_VERTICAL_AND_LEFT_HORIZONTAL_SCROLL 0x2A
 
-
+ret_code_t twim_master_init(uint32_t scl, uint32_t sda);
 
 void SSD1306_begin(uint8_t switchvcc, uint8_t i2caddr, bool reset);
 void SSD1306_command(uint8_t c);
@@ -136,6 +138,8 @@ void SSD1306_drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color);
 
 void SSD1306_drawFastVLineInternal(int16_t x, int16_t y, int16_t h, uint16_t color); //__attribute__((always_inline));
 void SSD1306_drawFastHLineInternal(int16_t x, int16_t y, int16_t w, uint16_t color); //__attribute__((always_inline));
+
+
 
 static const uint8_t el_logo[SSD1306_LCDHEIGHT * SSD1306_LCDWIDTH / 8] =
 {
