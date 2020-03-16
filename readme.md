@@ -18,11 +18,12 @@ Define in SSD1306.h
 //#define SSD1306_128_32
 //#define SSD1306_96_16
 ```
-![SSD1306 128x32](/images/SSD1306_128_32_NRF52840_DK_board.png)
-Format: ![Alt Text](url)
 
-![SSD1306 128x64](/images/SSD1306_128_64_NRF52840_DK_board.png)
-Format: ![Alt Text](url)
+![Image of SSD1306 128_32](/images/SSD1306_128_32_NRF52840_DK_board.png)
+
+![Image of SSD1306 128_64](/images/SSD1306_128_64_NRF52840_DK_board.png)
+
+
 
 # Requirements
 ------------
